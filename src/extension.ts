@@ -5,7 +5,7 @@ import * as vsc from 'vscode';
 import { OdaDefinitionProvider } from './oda-definition-provider';
 
 export function activate(context: vsc.ExtensionContext) {
-	console.log('Congratulations, "oda-framework" extension is now active!');
+	console.log('Congratulations, "oda-ide" extension is now active!');
 
 	const disposable = vsc.languages.registerDefinitionProvider(
 		{ language: 'html', scheme: 'file' },

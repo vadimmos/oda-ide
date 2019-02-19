@@ -18,10 +18,8 @@ export class OdaDefinitionProvider implements vsc.DefinitionProvider {
     }
 }
 function getComponnetName(document: vsc.TextDocument, position: vsc.Position): string {
-    const targetRange = document.getWordRangeAtPosition(
-        position,
-        /(<.+?-?.+?(>| )|extends:\s?(,|\'| ).+?-?.+?(,|\'| ))/
-    )
+    const targetRange = document.getWordRangeAtPosition(position, /(<|'|"|,| ).+?(-.+?)*(>|'|"|,| )/);
+    if (!targetRange) return '';
     const targetText = document.getText(targetRange)
     const formatedText = targetText
         .replace('<', '')
@@ -51,6 +49,7 @@ async function getComponentFilePath(componnetName: string, rootPath: String) {
 
 async function getComponentFile(fileName: string, componnetName: string) {
     const findedFiles = await vsc.workspace.findFiles(`**/${fileName}`, '**/node_modules/**');
+    const docs = vsc.workspace.textDocuments;
     const file = findedFiles.find(f => {
         const data = fs.readFileSync(f.fsPath, 'utf8');
         const reg = new RegExp(`is\\s?:\\s?[\\"\\']${componnetName}[\\"\\']`, 'i');
