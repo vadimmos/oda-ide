@@ -2,12 +2,18 @@ import * as vsc from 'vscode';
 import * as fs from 'fs';
 import * as pathUtil from 'path';
 
+const PREFIX = 'oda-';
+
 export class OdaDefinitionProvider implements vsc.DefinitionProvider {
     async provideDefinition(document: vsc.TextDocument, position: vsc.Position, token: vsc.CancellationToken) {
         const componnetName = getComponnetName(document, position);
         if (!componnetName) return null;
 
-        const componnetFilePath = await getComponentFilePath(componnetName, '');
+        const reg = new RegExp(`<link rel="import" href="(.*/(${componnetName}|${componnetName.replace(PREFIX, '')}).html)">`);
+        const match = document.getText().match(reg);
+        const linkPath = match && match[1] || '';
+
+        const componnetFilePath = await getComponentFilePath(componnetName, linkPath);
         if (!componnetFilePath) return null;
 
         const declarationPos = new vsc.Position(0, 0);
@@ -33,14 +39,17 @@ function getComponnetName(document: vsc.TextDocument, position: vsc.Position): s
     return formatedText;
 }
 
-async function getComponentFilePath(componnetName: string, rootPath: String) {
-    const PREFIX = 'oda-';
-    const posibleFileNames = ['index.html'];
-    if (componnetName.startsWith(PREFIX)) {
-        posibleFileNames.push(`${componnetName}.html`);
-    } else {
-        posibleFileNames.push(`${PREFIX}${componnetName}.html`);
+async function getComponentFilePath(componnetName: string, linkPath: string) {
+    if (linkPath) {
+        const fullPath = pathUtil.join(vsc.workspace.rootPath || '', linkPath);
+        const check = checkFile(fullPath, componnetName);
+        if (check) {
+            return fullPath;
+        }
     }
+
+
+    const posibleFileNames = ['index.html', `${componnetName.replace(PREFIX, '')}.html`, `${PREFIX}${componnetName}.html`, `${componnetName}.html`];
     for (let key in posibleFileNames) {
         const file = await getComponentFile(posibleFileNames[key], componnetName);
         if (file) return file.fsPath;
@@ -51,9 +60,12 @@ async function getComponentFile(fileName: string, componnetName: string) {
     const findedFiles = await vsc.workspace.findFiles(`**/${fileName}`, '**/node_modules/**');
     const docs = vsc.workspace.textDocuments;
     const file = findedFiles.find(f => {
-        const data = fs.readFileSync(f.fsPath, 'utf8');
-        const reg = new RegExp(`is\\s?:\\s?[\\"\\']${componnetName}[\\"\\']`, 'i');
-        return reg.test(data);
+        return checkFile(f.fsPath, componnetName);
     });
     return file;
+}
+function checkFile(filePath: string, componnetName: string) {
+    const data = fs.readFileSync(filePath, 'utf8');
+    const reg = new RegExp(`is\\s?:\\s?[\\"\\']${componnetName}[\\"\\']`, 'i');
+    return reg.test(data);
 }
