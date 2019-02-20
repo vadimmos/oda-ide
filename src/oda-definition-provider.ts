@@ -11,7 +11,15 @@ export class OdaDefinitionProvider implements vsc.DefinitionProvider {
 
         const reg = new RegExp(`<link rel="import" href="(.*/(${componnetName}|${componnetName.replace(PREFIX, '')}).html)">`);
         const match = document.getText().match(reg);
-        const linkPath = match && match[1] || '';
+        let linkPath = match && match[1] || '';
+        if (!pathUtil.isAbsolute(linkPath)) {
+            linkPath = pathUtil.resolve(document.fileName.replace(pathUtil.basename(document.fileName), ''), linkPath);
+        }
+
+        // const findedUri = vsc.Uri.file(linkPath);
+        // const findedDocument = await vsc.workspace.openTextDocument(findedUri);
+
+
 
         const componnetFilePath = await getComponentFilePath(componnetName, linkPath);
         if (!componnetFilePath) return null;
@@ -41,7 +49,7 @@ function getComponnetName(document: vsc.TextDocument, position: vsc.Position): s
 
 async function getComponentFilePath(componnetName: string, linkPath: string) {
     if (linkPath) {
-        const fullPath = pathUtil.join(vsc.workspace.rootPath || '', linkPath);
+        const fullPath = pathUtil.resolve(vsc.workspace.rootPath || '', linkPath);
         const check = checkFile(fullPath, componnetName);
         if (check) {
             return fullPath;
